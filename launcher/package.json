@@ -75,6 +75,7 @@
       "category": "public.app-category.games"
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -90,7 +91,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Papyrus Client",
-      "installerIcon": "build/icon.png",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
       "uninstallDisplayName": "Papyrus Client",
       "runAfterFinish": true,
       "artifactName": "${productName} Setup ${version}.${ext}"
