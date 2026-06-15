@@ -124,7 +124,10 @@ jobs:
       - name: Set launcher version from tag
         if: startsWith(github.ref, 'refs/tags/v')
         working-directory: launcher
-        run: npm version "${GITHUB_REF#refs/tags/v}" --no-git-tag-version --allow-same-version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
       - name: Package Electron app
         working-directory: launcher
         run: npx electron-builder --publish never
@@ -134,7 +137,7 @@ jobs:
           path: |
             launcher/release/*.dmg
             launcher/release/*Setup*.exe
-            launcher/release/*-arm64.zip
+            launcher/release/*-arm64-mac.zip
             launcher/release/latest.yml
             launcher/release/latest-mac.yml
             launcher/release/*.blockmap
@@ -156,7 +159,7 @@ jobs:
           find artifacts -type f -name 'latest.yml' -exec cp {} release/ \;
           find artifacts -type f -name 'latest-mac.yml' -exec cp {} release/ \;
           find artifacts -type f -name '*.blockmap' -exec cp {} release/ \;
-          find artifacts -type f -name '*-arm64.zip' -exec cp {} release/ \;
+          find artifacts -type f -name '*-arm64-mac.zip' -exec cp {} release/ \;
           echo "Release files:"
           ls -la release/
           test "$(find release -maxdepth 1 -name 'papyrus-shield-*-*.jar' | wc -l)" -eq 6
@@ -164,7 +167,7 @@ jobs:
           test "$(find release -maxdepth 1 -name '*Setup*.exe' | wc -l)" -ge 1
           test "$(find release -maxdepth 1 -name 'latest.yml' | wc -l)" -eq 1
           test "$(find release -maxdepth 1 -name 'latest-mac.yml' | wc -l)" -eq 1
-          test "$(find release -maxdepth 1 -name '*-arm64.zip' | wc -l)" -ge 1
+          test "$(find release -maxdepth 1 -name '*-arm64-mac.zip' | wc -l)" -ge 1
       - name: Remove stale release assets
         env:
           GH_TOKEN: ${{ github.token }}
