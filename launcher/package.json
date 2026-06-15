@@ -1,0 +1,63 @@
+{
+  "name": "papyrus-client",
+  "version": "1.0.0",
+  "description": "Fabric-only Minecraft launcher with Papyrus client integrity",
+  "main": "dist/main/index.js",
+  "author": "SushiMC",
+  "license": "MIT",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
+    "dev:main": "tsc -p tsconfig.main.json --watch",
+    "dev:renderer": "vite",
+    "build": "npm run build:main && npm run build:renderer && electron-builder",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "start": "electron ."
+  },
+  "dependencies": {
+    "@xmcl/core": "^2.14.1",
+    "@xmcl/installer": "^6.1.2",
+    "@xmcl/user": "^4.2.0",
+    "@xmcl/launch": "^1.1.0",
+    "@xmcl/file-service": "^1.4.0",
+    "@xmcl/model": "^2.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  },
+  "build": {
+    "appId": "dev.sushimc.papyrus.client",
+    "productName": "Papyrus Client",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../mod/build/libs",
+        "to": "bundled-mods",
+        "filter": ["papyrus-shield*.jar"]
+      }
+    ],
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.games"
+    },
+    "win": {
+      "target": ["nsis"]
+    }
+  }
+}

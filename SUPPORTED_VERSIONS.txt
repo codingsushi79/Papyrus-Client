@@ -1,0 +1,9 @@
+# Supported Minecraft versions for Papyrus Client mod builds.
+# Obfuscated (1.21.x) uses mod/; unobfuscated 26.x uses mod-unobf/.
+
+26.1.2
+1.21.11
+1.21.10
+1.21.8
+1.21.4
+1.21.1

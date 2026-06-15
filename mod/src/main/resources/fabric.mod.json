@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "papyrus-shield",
+  "version": "${version}",
+  "name": "Papyrus Shield",
+  "description": "Client integrity for Papyrus servers.",
+  "authors": ["SushiMC"],
+  "contact": {
+    "homepage": "https://docs.sushii.dev/papyrus-client/",
+    "sources": "https://github.com/codingsushi79/Papyrus-Client"
+  },
+  "license": "MIT",
+  "icon": "assets/papyrus-shield/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.sushimc.papyrus.shield.PapyrusShieldClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "${minecraft_version}",
+    "java": ">=21"
+  },
+  "custom": {
+    "papyrus": {
+      "hidden": true,
+      "integrity": true
+    }
+  }
+}
