@@ -64,7 +64,7 @@
     "mac": {
       "target": [
         {
-          "target": "dmg",
+          "target": "pkg",
           "arch": ["arm64"]
         },
         {
@@ -99,6 +99,15 @@
     },
     "dmg": {
       "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "pkg": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "installLocation": "/Applications",
+      "allowAnywhere": false,
+      "allowCurrentUserHome": false,
+      "allowRootDirectory": false,
+      "isRelocatable": false,
+      "overwriteAction": "upgrade"
     }
   }
 }

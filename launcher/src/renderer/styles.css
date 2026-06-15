@@ -1,37 +1,140 @@
 :root {
   color-scheme: dark;
   font-family: Inter, system-ui, sans-serif;
-  background: #09090b;
-  color: #fafafa;
+  background: #1b1b1f;
+  color: #f4f4f5;
 }
 
 * { box-sizing: border-box; }
 
 body { margin: 0; }
 
-.app { min-height: 100vh; display: flex; flex-direction: column; padding: 24px; gap: 20px; }
-
-.header { display: flex; justify-content: space-between; align-items: center; }
-.brand { display: flex; align-items: center; gap: 14px; }
-.logo { width: 48px; height: 48px; border-radius: 12px; display: block; }
-.eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; color: #a1a1aa; margin: 0; }
-h1 { margin: 4px 0 0; font-size: 28px; }
-h2 { margin: 0 0 12px; font-size: 18px; }
-
-.auth { display: flex; gap: 12px; align-items: center; }
-
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; }
-
-.card {
-  background: #18181b;
-  border: 1px solid #27272a;
-  border-radius: 12px;
-  padding: 16px;
+.prism-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 280px 1fr;
 }
 
-.row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.instance-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #121216;
+  border-right: 1px solid #2a2a31;
+}
 
-input, select, button {
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #2a2a31;
+}
+
+.sidebar-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.sidebar-brand strong {
+  display: block;
+  font-size: 15px;
+}
+
+.sidebar-brand span {
+  color: #a1a1aa;
+  font-size: 12px;
+}
+
+.instance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  overflow: auto;
+}
+
+.instance-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #1b1b1f;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.instance-item.selected {
+  border-color: #3b82f6;
+  background: #1f2937;
+}
+
+.instance-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #27272a;
+  font-weight: 700;
+}
+
+.instance-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.instance-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instance-version {
+  color: #a1a1aa;
+  font-size: 12px;
+}
+
+.add-instance,
+.create-instance-panel button,
+.mod-actions button,
+.installed-mods button,
+.sidebar-footer button,
+.mod-search-row button,
+.mod-install {
+  border-radius: 8px;
+  border: 1px solid #3f3f46;
+  background: #18181b;
+  color: inherit;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.add-instance {
+  width: 100%;
+}
+
+.create-instance-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #2a2a31;
+  border-radius: 10px;
+  background: #1b1b1f;
+}
+
+.create-instance-panel input,
+.create-instance-panel select,
+.mod-search-row input {
   border-radius: 8px;
   border: 1px solid #3f3f46;
   background: #09090b;
@@ -39,23 +142,259 @@ input, select, button {
   padding: 8px 12px;
 }
 
-button { cursor: pointer; }
-button.primary { background: #fafafa; color: #09090b; border-color: #fafafa; font-weight: 600; }
-button.launch { width: 100%; margin-top: 12px; }
-button.selected { border-color: #fafafa; }
-
-.list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-.list li button { width: 100%; text-align: left; }
-
-.hint { color: #a1a1aa; font-size: 14px; }
-
-.status {
-  border-top: 1px solid #27272a;
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding-top: 12px;
+  border-top: 1px solid #2a2a31;
+}
+
+.account-name {
   color: #d4d4d8;
+  font-size: 13px;
+}
+
+button.primary,
+.launch-button {
+  background: #22c55e;
+  color: #052e16;
+  border-color: #22c55e;
+  font-weight: 700;
+}
+
+.instance-workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid #2a2a31;
+}
+
+.workspace-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.workspace-header p {
+  margin: 6px 0 0;
+  color: #a1a1aa;
+}
+
+.launch-button {
+  min-width: 120px;
+  padding: 12px 20px;
+  font-size: 16px;
+}
+
+.launch-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.workspace-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  border-bottom: 1px solid #2a2a31;
+}
+
+.workspace-tabs button {
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #a1a1aa;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.workspace-tabs button.active {
+  color: #fafafa;
+  border-bottom-color: #3b82f6;
+}
+
+.workspace-content {
+  flex: 1;
+  overflow: auto;
+  padding: 20px 24px;
+}
+
+.empty-workspace {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 24px;
+}
+
+.info-card {
+  background: #18181b;
+  border: 1px solid #2a2a31;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.info-card h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.info-card dl {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.info-card dt {
+  color: #a1a1aa;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.info-card dd {
+  margin: 2px 0 0;
+}
+
+.hint {
+  color: #a1a1aa;
   font-size: 14px;
 }
 
+.mod-search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mod-search-row input {
+  flex: 1;
+}
+
+.mod-results {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.mod-result {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid #2a2a31;
+  border-radius: 10px;
+  background: #18181b;
+}
+
+.mod-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.mod-icon-fallback {
+  background: #27272a;
+}
+
+.mod-copy { min-width: 0; }
+
+.mod-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.mod-downloads {
+  color: #71717a;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.mod-description {
+  margin: 4px 0 0;
+  color: #a1a1aa;
+  font-size: 13px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mods-panel h3 {
+  margin: 16px 0 8px;
+  font-size: 15px;
+}
+
+.installed-mods,
+.compact-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.installed-mods li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #2a2a31;
+  border-radius: 8px;
+}
+
+.installed-mods span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-list li {
+  color: #d4d4d8;
+  font-size: 13px;
+}
+
+.mod-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.status-bar {
+  border-top: 1px solid #2a2a31;
+  padding: 10px 24px;
+  color: #d4d4d8;
+  font-size: 13px;
+  background: #121216;
+}
+
 @media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
+  .prism-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .instance-sidebar {
+    border-right: none;
+    border-bottom: 1px solid #2a2a31;
+  }
 }

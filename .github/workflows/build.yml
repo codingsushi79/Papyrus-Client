@@ -135,7 +135,7 @@ jobs:
         with:
           name: papyrus-client-${{ matrix.os }}
           path: |
-            launcher/release/*.dmg
+            launcher/release/*.pkg
             launcher/release/*Setup*.exe
             launcher/release/*-arm64-mac.zip
             launcher/release/latest.yml
@@ -154,7 +154,7 @@ jobs:
         run: |
           mkdir -p release
           find artifacts -type f -name 'papyrus-shield-*-*.jar' -exec cp {} release/ \;
-          find artifacts -type f -name '*.dmg' -exec cp {} release/ \;
+          find artifacts -type f -name '*.pkg' -exec cp {} release/ \;
           find artifacts -type f -name '*Setup*.exe' -exec cp {} release/ \;
           find artifacts -type f -name 'latest.yml' -exec cp {} release/ \;
           find artifacts -type f -name 'latest-mac.yml' -exec cp {} release/ \;
@@ -163,7 +163,7 @@ jobs:
           echo "Release files:"
           ls -la release/
           test "$(find release -maxdepth 1 -name 'papyrus-shield-*-*.jar' | wc -l)" -eq 6
-          test "$(find release -maxdepth 1 -name '*.dmg' | wc -l)" -ge 1
+          test "$(find release -maxdepth 1 -name '*.pkg' | wc -l)" -ge 1
           test "$(find release -maxdepth 1 -name '*Setup*.exe' | wc -l)" -ge 1
           test "$(find release -maxdepth 1 -name 'latest.yml' | wc -l)" -eq 1
           test "$(find release -maxdepth 1 -name 'latest-mac.yml' | wc -l)" -eq 1

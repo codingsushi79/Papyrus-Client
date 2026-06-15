@@ -17,6 +17,7 @@ import {
   microsoftOAuth,
   restoreSession,
 } from './auth';
+import { downloadModFile, getModrinthVersion, searchModrinth } from './modrinth';
 import { setupAutoUpdater } from './updater';
 
 const HIDDEN_MOD_ID = 'papyrus-shield';
@@ -31,6 +32,17 @@ type StoredProfile = {
 };
 
 let mainWindow: BrowserWindow | null = null;
+
+function formatError(error: unknown): string {
+  if (error instanceof AggregateError) {
+    const parts = error.errors?.map((entry) => formatError(entry)) ?? [];
+    return parts.length > 0 ? parts.join('; ') : error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
 
 function getDataRoot() {
   return path.join(app.getPath('userData'), 'papyrus-client');
@@ -303,36 +315,86 @@ ipcMain.handle('mods:listUser', async () => {
   return files.filter((f) => f.endsWith('.jar') && !f.includes(HIDDEN_MOD_ID));
 });
 
-ipcMain.handle('launch:start', async (_e, profileId: string) => {
-  const session = getSession();
-  if (!session) {
-    throw new Error('Sign in with Microsoft before launching.');
-  }
+ipcMain.handle('mods:openFolder', async () => {
+  const dir = path.join(getDataRoot(), 'mods');
+  await fs.mkdir(dir, { recursive: true });
+  await shell.openPath(dir);
+});
+
+ipcMain.handle('mods:removeFromProfile', async (_e, profileId: string, filename: string) => {
+  const profiles = await loadProfiles();
+  const profile = profiles.find((p) => p.id === profileId);
+  if (!profile) throw new Error('Profile not found');
+  profile.mods = profile.mods.filter((mod) => mod !== filename);
+  await saveProfiles(profiles);
+  return profile.mods.filter((m) => !m.includes(HIDDEN_MOD_ID));
+});
+
+ipcMain.handle('modrinth:search', async (_e, query: string) => {
+  if (!query.trim()) return [];
+  return searchModrinth(query);
+});
+
+ipcMain.handle('modrinth:install', async (_e, profileId: string, projectId: string) => {
   const profiles = await loadProfiles();
   const profile = profiles.find((p) => p.id === profileId);
   if (!profile) throw new Error('Profile not found');
 
-  const { instanceRoot, versionId } = await prepareInstance(profile);
+  const version = await getModrinthVersion(projectId, profile.mcVersion);
+  if (!version) {
+    throw new Error(`No Fabric build on Modrinth for Minecraft ${profile.mcVersion}`);
+  }
 
-  const proc = await launch({
-    gamePath: instanceRoot,
-    javaPath: 'java',
-    version: versionId,
-    gameProfile: {
-      id: session.uuid,
-      name: session.name,
-    },
-    accessToken: session.accessToken,
-    extraExecOption: {
-      detached: false,
-    },
-  });
+  const modsDir = path.join(getDataRoot(), 'mods');
+  await fs.mkdir(modsDir, { recursive: true });
+  const dest = path.join(modsDir, version.filename);
+  await downloadModFile(version.url, dest);
 
-  proc.on('exit', (code: number | null) => {
-    mainWindow?.webContents.send('launch:exit', code);
-  });
+  if (!profile.mods.includes(version.filename)) {
+    profile.mods.push(version.filename);
+    await saveProfiles(profiles);
+  }
 
-  return { ok: true };
+  return {
+    filename: version.filename,
+    versionNumber: version.versionNumber,
+  };
+});
+
+ipcMain.handle('launch:start', async (_e, profileId: string) => {
+  try {
+    const session = getSession();
+    if (!session) {
+      throw new Error('Sign in with Microsoft before launching.');
+    }
+    const profiles = await loadProfiles();
+    const profile = profiles.find((p) => p.id === profileId);
+    if (!profile) throw new Error('Profile not found');
+
+    const { versionId } = await prepareInstance(profile);
+
+    const proc = await launch({
+      gamePath: path.join(getDataRoot(), 'instances', profile.id),
+      javaPath: 'java',
+      version: versionId,
+      gameProfile: {
+        id: session.uuid,
+        name: session.name,
+      },
+      accessToken: session.accessToken,
+      extraExecOption: {
+        detached: false,
+      },
+    });
+
+    proc.on('exit', (code: number | null) => {
+      mainWindow?.webContents.send('launch:exit', code);
+    });
+
+    return { ok: true };
+  } catch (error) {
+    throw new Error(formatError(error));
+  }
 });
 
 ipcMain.handle('shell:openDocs', () => {

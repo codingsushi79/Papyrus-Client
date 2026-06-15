@@ -1,0 +1,60 @@
+diff --git a/program_info/CMakeLists.txt b/program_info/CMakeLists.txt
+index 1111111..2222222 100644
+--- a/program_info/CMakeLists.txt
++++ b/program_info/CMakeLists.txt
+@@ -8,10 +8,10 @@ if(UNIX)
+   endif()
+ endif()
+ 
+-set(Launcher_CommonName "PrismLauncher")
+-set(Launcher_DisplayName "Prism Launcher")
+-set(Launcher_AppID "org.prismlauncher.PrismLauncher")
+-set(Launcher_Domain "prismlauncher.org")
+-set(Launcher_Git "https://github.com/PrismLauncher/PrismLauncher")
++set(Launcher_CommonName "PapyrusClient")
++set(Launcher_DisplayName "Papyrus Client")
++set(Launcher_AppID "dev.sushimc.papyrus.client")
++set(Launcher_Domain "sushii.dev")
++set(Launcher_Git "https://github.com/codingsushi79/Papyrus-Client")
+ 
+ set(Launcher_Name "${Launcher_CommonName}" PARENT_SCOPE)
+ set(Launcher_DisplayName "${Launcher_DisplayName}" PARENT_SCOPE)
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3333333..4444444 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -174,12 +174,12 @@ endif()
+ 
+ ##################################### Set default URLs #####################################
+ 
+-set(Launcher_NEWS_RSS_URL "https://prismlauncher.org/feed/feed.xml" CACHE STRING "URL to fetch Prism Launcher's news RSS feed from.")
+-set(Launcher_NEWS_OPEN_URL "https://prismlauncher.org/news" CACHE STRING "URL that gets opened when the user clicks 'More News'")
+-set(Launcher_WIKI_URL "https://prismlauncher.org/wiki/" CACHE STRING "URL that gets opened when the user clicks 'Launcher Help'")
+-set(Launcher_HELP_URL "https://prismlauncher.org/wiki/help-pages/%1" CACHE STRING "URL (with arg %1 to be substituted with page-id) that gets opened when the user requests help in a dialog window")
+-set(Launcher_LOGIN_CALLBACK_URL "https://prismlauncher.org/successful-login" CACHE STRING "URL that gets opened when the user successfully logins.")
++set(Launcher_NEWS_RSS_URL "https://docs.sushii.dev/papyrus-client/feed.xml" CACHE STRING "URL to fetch news RSS feed from.")
++set(Launcher_NEWS_OPEN_URL "https://docs.sushii.dev/papyrus-client" CACHE STRING "URL that gets opened when the user clicks 'More News'")
++set(Launcher_WIKI_URL "https://docs.sushii.dev/papyrus-client" CACHE STRING "URL that gets opened when the user clicks 'Launcher Help'")
++set(Launcher_HELP_URL "https://docs.sushii.dev/papyrus-client" CACHE STRING "URL that gets opened when the user requests help in a dialog window")
++set(Launcher_LOGIN_CALLBACK_URL "https://docs.sushii.dev/papyrus-client" CACHE STRING "URL that gets opened when the user successfully logins.")
+ set(Launcher_LEGACY_FMLLIBS_BASE_URL "https://files.prismlauncher.org/fmllibs/" CACHE STRING "URL for legacy (<=1.5.2) FML Libraries.")
+ 
+ ##################################### Set version numbers #####################################
+@@ -194,7 +194,7 @@ set(Launcher_VERSION_NAME4_COMMA "${Launcher_VERSION_MAJOR},${Launcher_VERSION_M
+ set(Launcher_BUILD_PLATFORM "unknown" CACHE STRING "A short string identifying the platform that this build was built for. Only used to display in the about dialog.")
+ 
+ # Updater
+-set(Launcher_UPDATER_GITHUB_REPO "https://github.com/PrismLauncher/PrismLauncher" CACHE STRING "Base github URL for the updater.")
++set(Launcher_UPDATER_GITHUB_REPO "https://github.com/codingsushi79/Papyrus-Client" CACHE STRING "Base github URL for the updater.")
+ 
+ # Artifact name
+ set(Launcher_BUILD_ARTIFACT "" CACHE STRING "Artifact name to help the updater identify valid artifacts.")
+@@ -344,7 +344,7 @@ endif()
+ 
+ include(program_info/CMakeLists.txt)
+ 
+-set(Launcher_APP_BINARY_NAME "prismlauncher" CACHE STRING "Name of the Launcher binary")
++set(Launcher_APP_BINARY_NAME "papyrus-client" CACHE STRING "Name of the Launcher binary")
+ 
+ ##################################### Install layout #####################################
+ 
