@@ -1,7 +1,6 @@
 import { safeStorage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { MicrosoftAuthenticator } from '@xmcl/user';
 
 const MS_CLIENT_ID = '00000000402b5328';
 const MS_REDIRECT_URI = 'https://login.live.com/oauth20_desktop.srf';
@@ -133,10 +132,93 @@ async function refreshMicrosoftAccessToken(refreshToken: string) {
   );
 }
 
+async function authenticateXboxLive(msAccessToken: string) {
+  const ticketFormats = [msAccessToken, `d=${msAccessToken}`];
+  let lastError = 'unknown error';
+
+  for (const rpsTicket of ticketFormats) {
+    const res = await fetch('https://user.auth.xboxlive.com/user/authenticate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'x-xbl-contract-version': '1',
+      },
+      body: JSON.stringify({
+        Properties: {
+          AuthMethod: 'RPS',
+          SiteName: 'user.auth.xboxlive.com',
+          RpsTicket: rpsTicket,
+        },
+        RelyingParty: 'http://auth.xboxlive.com',
+        TokenType: 'JWT',
+      }),
+    });
+
+    if (res.ok) {
+      return (await res.json()) as { Token: string };
+    }
+
+    lastError = await res.text();
+    if (res.status !== 401) {
+      break;
+    }
+  }
+
+  throw new Error(`Failed to authenticate with Xbox Live: ${lastError}`);
+}
+
+async function authorizeXboxLive(userToken: string, relyingParty: string) {
+  const res = await fetch('https://xsts.auth.xboxlive.com/xsts/authorize', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'x-xbl-contract-version': '1',
+    },
+    body: JSON.stringify({
+      Properties: {
+        SandboxId: 'RETAIL',
+        UserTokens: [userToken],
+      },
+      RelyingParty: relyingParty,
+      TokenType: 'JWT',
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to authorize with Xbox Live (${res.status}): ${await res.text()}`);
+  }
+
+  return (await res.json()) as {
+    Token: string;
+    DisplayClaims: { xui: Array<{ uhs: string }> };
+  };
+}
+
+async function loginMinecraftWithXbox(uhs: string, xstsToken: string) {
+  const res = await fetch('https://api.minecraftservices.com/authentication/login_with_xbox', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      identityToken: `XBL3.0 x=${uhs};${xstsToken}`,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to login to Minecraft (${res.status}): ${await res.text()}`);
+  }
+
+  return (await res.json()) as { access_token: string };
+}
+
 async function minecraftSessionFromMicrosoftToken(msAccessToken: string): Promise<Session> {
-  const authenticator = new MicrosoftAuthenticator({});
-  const { minecraftXstsResponse } = await authenticator.acquireXBoxToken(msAccessToken);
-  const mcResponse = await authenticator.loginMinecraftWithXBox(
+  const xblResponse = await authenticateXboxLive(msAccessToken);
+  const minecraftXstsResponse = await authorizeXboxLive(
+    xblResponse.Token,
+    'rp://api.minecraftservices.com/',
+  );
+  const mcResponse = await loginMinecraftWithXbox(
     minecraftXstsResponse.DisplayClaims.xui[0].uhs,
     minecraftXstsResponse.Token,
   );

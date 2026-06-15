@@ -121,6 +121,10 @@ jobs:
           npm install
           npm run build:main
           npm run build:renderer
+      - name: Set launcher version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: launcher
+        run: npm version "${GITHUB_REF#refs/tags/v}" --no-git-tag-version --allow-same-version
       - name: Package Electron app
         working-directory: launcher
         run: npx electron-builder --publish never
@@ -129,7 +133,11 @@ jobs:
           name: papyrus-client-${{ matrix.os }}
           path: |
             launcher/release/*.dmg
-            launcher/release/*.exe
+            launcher/release/*Setup*.exe
+            launcher/release/*-arm64.zip
+            launcher/release/latest.yml
+            launcher/release/latest-mac.yml
+            launcher/release/*.blockmap
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -144,11 +152,19 @@ jobs:
           mkdir -p release
           find artifacts -type f -name 'papyrus-shield-*-*.jar' -exec cp {} release/ \;
           find artifacts -type f -name '*.dmg' -exec cp {} release/ \;
-          find artifacts -type f -name '*.exe' -exec cp {} release/ \;
-          count=$(find release -type f | wc -l)
-          echo "Prepared ${count} release files"
+          find artifacts -type f -name '*Setup*.exe' -exec cp {} release/ \;
+          find artifacts -type f -name 'latest.yml' -exec cp {} release/ \;
+          find artifacts -type f -name 'latest-mac.yml' -exec cp {} release/ \;
+          find artifacts -type f -name '*.blockmap' -exec cp {} release/ \;
+          find artifacts -type f -name '*-arm64.zip' -exec cp {} release/ \;
+          echo "Release files:"
           ls -la release/
-          test "${count}" -ge 8
+          test "$(find release -maxdepth 1 -name 'papyrus-shield-*-*.jar' | wc -l)" -eq 6
+          test "$(find release -maxdepth 1 -name '*.dmg' | wc -l)" -ge 1
+          test "$(find release -maxdepth 1 -name '*Setup*.exe' | wc -l)" -ge 1
+          test "$(find release -maxdepth 1 -name 'latest.yml' | wc -l)" -eq 1
+          test "$(find release -maxdepth 1 -name 'latest-mac.yml' | wc -l)" -eq 1
+          test "$(find release -maxdepth 1 -name '*-arm64.zip' | wc -l)" -ge 1
       - name: Remove stale release assets
         env:
           GH_TOKEN: ${{ github.token }}

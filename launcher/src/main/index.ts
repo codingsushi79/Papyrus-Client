@@ -17,6 +17,7 @@ import {
   microsoftOAuth,
   restoreSession,
 } from './auth';
+import { setupAutoUpdater } from './updater';
 
 const HIDDEN_MOD_ID = 'papyrus-shield';
 const DOCS_DOWNLOAD = 'https://docs.sushii.dev/papyrus-client/download';
@@ -114,6 +115,10 @@ async function acquireMicrosoftAuthCode() {
     authUrl.searchParams.set('redirect_uri', microsoftOAuth.redirectUri);
     authUrl.searchParams.set('scope', microsoftOAuth.scope);
     authUrl.searchParams.set('prompt', 'select_account');
+    authUrl.searchParams.set('lw', '1');
+    authUrl.searchParams.set('fl', 'dob,easi2');
+    authUrl.searchParams.set('xsup', '1');
+    authUrl.searchParams.set('nopa', '2');
 
     const handleRedirect = (url: string) => {
       if (!url.startsWith(microsoftOAuth.redirectUri)) return;
@@ -238,6 +243,7 @@ app.whenReady().then(async () => {
   await ensureDirs();
   await restoreSession(getDataRoot());
   createWindow();
+  setupAutoUpdater(() => mainWindow);
 });
 
 app.on('window-all-closed', () => {
