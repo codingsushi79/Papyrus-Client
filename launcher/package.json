@@ -17,10 +17,7 @@
   "dependencies": {
     "@xmcl/core": "^2.14.1",
     "@xmcl/installer": "^6.1.2",
-    "@xmcl/user": "^4.2.0",
-    "@xmcl/launch": "^1.1.0",
-    "@xmcl/file-service": "^1.4.0",
-    "@xmcl/model": "^2.0.3"
+    "@xmcl/user": "^4.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

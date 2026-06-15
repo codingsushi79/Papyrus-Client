@@ -1,15 +1,21 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { Auth, LauncherProfile, Version } from '@xmcl/core';
-import { installFabric, installVersion, getVersionList } from '@xmcl/installer';
-import { launch } from '@xmcl/launch';
+import { existsSync, readdirSync } from 'node:fs';
+import { launch } from '@xmcl/core';
+import {
+  getLoaderArtifactListFor,
+  getVersionList,
+  install,
+  installFabric,
+} from '@xmcl/installer';
 import { MicrosoftAuthenticator } from '@xmcl/user';
 
 const HIDDEN_MOD_ID = 'papyrus-shield';
 const DOCS_DOWNLOAD = 'https://docs.sushii.dev/papyrus-client/download';
 const PREFERRED_VERSIONS = ['26.1.2', '1.21.11', '1.21.10', '1.21.8', '1.21.4', '1.21.1'];
+const MS_CLIENT_ID = '00000000402b5328';
+const MS_SCOPE = 'XboxLive.signin offline_access';
 
 type StoredProfile = {
   id: string;
@@ -22,11 +28,9 @@ type Session = {
   uuid: string;
   name: string;
   accessToken: string;
-  userType: string;
 };
 
 let mainWindow: BrowserWindow | null = null;
-let auth: Auth | null = null;
 let session: Session | null = null;
 
 function getDataRoot() {
@@ -61,7 +65,7 @@ function bundledModPath(mcVersion: string) {
   if (!existsSync(bundled)) {
     return null;
   }
-  const files = require('node:fs').readdirSync(bundled) as string[];
+  const files = readdirSync(bundled) as string[];
   const versioned = files.find((f) => f.startsWith(`papyrus-shield-${mcVersion}-`) && f.endsWith('.jar'));
   if (versioned) {
     return path.join(bundled, versioned);
@@ -82,14 +86,118 @@ async function installHiddenMod(instanceRoot: string, mcVersion: string) {
   await fs.copyFile(src, dest);
 }
 
+async function acquireMicrosoftAccessToken() {
+  const deviceRes = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: MS_CLIENT_ID, scope: MS_SCOPE }),
+  });
+  const device = (await deviceRes.json()) as {
+    user_code: string;
+    device_code: string;
+    verification_uri: string;
+    expires_in: number;
+    interval: number;
+    error?: string;
+    error_description?: string;
+  };
+  if (device.error) {
+    throw new Error(device.error_description ?? device.error);
+  }
+
+  await shell.openExternal(device.verification_uri);
+  const dialogOptions = {
+    type: 'info' as const,
+    title: 'Microsoft Sign In',
+    message: 'Sign in in your browser',
+    detail: `If prompted, enter this code: ${device.user_code}`,
+    buttons: ['Continue'],
+  };
+  if (mainWindow) {
+    await dialog.showMessageBox(mainWindow, dialogOptions);
+  } else {
+    await dialog.showMessageBox(dialogOptions);
+  }
+
+  const deadline = Date.now() + device.expires_in * 1000;
+  const interval = (device.interval ?? 5) * 1000;
+
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, interval));
+    const tokenRes = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: MS_CLIENT_ID,
+        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+        device_code: device.device_code,
+      }),
+    });
+    const token = (await tokenRes.json()) as {
+      access_token?: string;
+      error?: string;
+      error_description?: string;
+    };
+    if (token.access_token) {
+      return token.access_token;
+    }
+    if (token.error && token.error !== 'authorization_pending') {
+      throw new Error(token.error_description ?? token.error);
+    }
+  }
+
+  throw new Error('Microsoft sign-in timed out');
+}
+
+async function loginWithMicrosoft() {
+  const msAccessToken = await acquireMicrosoftAccessToken();
+  const authenticator = new MicrosoftAuthenticator({});
+  const { minecraftXstsResponse } = await authenticator.acquireXBoxToken(msAccessToken);
+  const mcResponse = await authenticator.loginMinecraftWithXBox(
+    minecraftXstsResponse.DisplayClaims.xui[0].uhs,
+    minecraftXstsResponse.Token,
+  );
+
+  const profileRes = await fetch('https://api.minecraftservices.com/minecraft/profile', {
+    headers: { Authorization: `Bearer ${mcResponse.access_token}` },
+  });
+  if (!profileRes.ok) {
+    throw new Error('This Microsoft account does not own Minecraft Java Edition.');
+  }
+  const profile = (await profileRes.json()) as { id: string; name: string };
+
+  return {
+    uuid: profile.id,
+    name: profile.name,
+    accessToken: mcResponse.access_token,
+  };
+}
+
 async function prepareInstance(profile: StoredProfile) {
   const instanceRoot = path.join(getDataRoot(), 'instances', profile.id);
   await fs.mkdir(instanceRoot, { recursive: true });
 
-  const versionId = `papyrus-fabric-${profile.mcVersion}`;
   const versionList = await getVersionList();
-  await installVersion(profile.mcVersion, { minecraft: versionList, root: instanceRoot });
-  await installFabric({ minecraft: versionList, version: profile.mcVersion, loader: 'latest' }, instanceRoot);
+  const versionMeta = versionList.versions.find((v) => v.id === profile.mcVersion);
+  if (!versionMeta) {
+    throw new Error(`Unknown Minecraft version: ${profile.mcVersion}`);
+  }
+
+  await install(versionMeta, instanceRoot);
+
+  const loaderArtifacts = await getLoaderArtifactListFor(profile.mcVersion);
+  const loaderArtifact =
+    [...loaderArtifacts].reverse().find((artifact) => artifact.loader.stable) ??
+    loaderArtifacts[loaderArtifacts.length - 1];
+  if (!loaderArtifact) {
+    throw new Error(`No Fabric loader available for ${profile.mcVersion}`);
+  }
+
+  const fabricVersionId = await installFabric({
+    minecraftVersion: profile.mcVersion,
+    version: loaderArtifact.loader.version,
+    minecraft: instanceRoot,
+  });
 
   await installHiddenMod(instanceRoot, profile.mcVersion);
 
@@ -101,7 +209,7 @@ async function prepareInstance(profile: StoredProfile) {
     }
   }
 
-  return { instanceRoot, versionId: `fabric-loader-${profile.mcVersion}` };
+  return { instanceRoot, versionId: fabricVersionId };
 }
 
 function createWindow() {
@@ -127,7 +235,6 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   await ensureDirs();
-  auth = new Auth(getDataRoot());
   createWindow();
 });
 
@@ -141,17 +248,8 @@ ipcMain.handle('auth:status', () => ({
 }));
 
 ipcMain.handle('auth:login', async () => {
-  if (!auth) throw new Error('Auth not ready');
-  const authenticator = new MicrosoftAuthenticator();
-  const result = await authenticator.authenticate(auth, (url) => {
-    shell.openExternal(url);
-  });
-  session = {
-    uuid: result.uuid,
-    name: result.name,
-    accessToken: result.accessToken,
-    userType: result.userType,
-  };
+  const result = await loginWithMicrosoft();
+  session = result;
   return { name: result.name, uuid: result.uuid };
 });
 
@@ -214,13 +312,12 @@ ipcMain.handle('launch:start', async (_e, profileId: string) => {
       name: session.name,
     },
     accessToken: session.accessToken,
-    userType: session.userType,
     extraExecOption: {
       detached: false,
     },
   });
 
-  proc.on('exit', (code) => {
+  proc.on('exit', (code: number | null) => {
     mainWindow?.webContents.send('launch:exit', code);
   });
 
