@@ -92,7 +92,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: papyrus-shield-${{ matrix.mc }}
-          path: ${{ matrix.project }}/build/libs/papyrus-shield-*.jar
+          path: ${{ matrix.project }}/build/libs/papyrus-shield-${{ matrix.mc }}-*.jar
 
   launcher:
     name: Build launcher
@@ -128,7 +128,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: papyrus-client-${{ matrix.os }}
-          path: launcher/release/*
+          path: |
+            launcher/release/*.dmg
+            launcher/release/*.exe
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -138,8 +140,15 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          find artifacts -type f -name 'papyrus-shield-*-*.jar' -exec cp {} release/ \;
+          find artifacts -type f -name '*.dmg' -exec cp {} release/ \;
+          find artifacts -type f -name '*.exe' -exec cp {} release/ \;
+          ls -la release/
       - uses: softprops/action-gh-release@v2
         with:
-          files: |
-            artifacts/**/*
+          files: release/*
           generate_release_notes: true
+          overwrite: true
