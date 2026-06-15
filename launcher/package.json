@@ -97,9 +97,6 @@
       "runAfterFinish": true,
       "artifactName": "${productName} Setup ${version}.${ext}"
     },
-    "dmg": {
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
-    },
     "pkg": {
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "installLocation": "/Applications",
