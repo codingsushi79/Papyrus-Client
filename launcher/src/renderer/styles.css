@@ -188,6 +188,27 @@ button.primary,
   color: #a1a1aa;
 }
 
+.workspace-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.delete-instance {
+  border-radius: 8px;
+  border: 1px solid #7f1d1d;
+  background: transparent;
+  color: #fca5a5;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delete-instance:hover {
+  background: #450a0a;
+}
+
 .launch-button {
   min-width: 120px;
   padding: 12px 20px;

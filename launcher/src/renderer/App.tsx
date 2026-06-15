@@ -49,7 +49,9 @@ export default function App() {
     const nextProfiles = await window.papyrus.listProfiles();
     setProfiles(nextProfiles);
     setUserMods(await window.papyrus.listUserMods());
-    if (!selectedProfile && nextProfiles.length > 0) {
+    if (selectedProfile && !nextProfiles.some((profile) => profile.id === selectedProfile)) {
+      setSelectedProfile(nextProfiles[0]?.id ?? '');
+    } else if (!selectedProfile && nextProfiles.length > 0) {
       setSelectedProfile(nextProfiles[0].id);
     }
   }
@@ -144,6 +146,20 @@ export default function App() {
     setStatus(`Removed ${filename} from ${activeInstance.name}.`);
   }
 
+  async function handleDeleteInstance() {
+    if (!activeInstance) return;
+    const name = activeInstance.name;
+    if (!confirm(`Delete instance "${name}"? Its game files will be removed and this cannot be undone.`)) {
+      return;
+    }
+    const deletedId = activeInstance.id;
+    const nextSelection = profiles.find((profile) => profile.id !== deletedId)?.id ?? '';
+    await window.papyrus.deleteProfile(deletedId);
+    setSelectedProfile(nextSelection);
+    await refresh();
+    setStatus(`Deleted instance ${name}.`);
+  }
+
   return (
     <div className="prism-shell">
       <aside className="instance-sidebar">
@@ -212,9 +228,14 @@ export default function App() {
                 <h1>{activeInstance.name}</h1>
                 <p>Minecraft {activeInstance.mcVersion} · Fabric · {activeInstance.mods.length} mods</p>
               </div>
-              <button type="button" className="launch-button" onClick={handleLaunch} disabled={!signedIn}>
-                Launch
-              </button>
+              <div className="workspace-actions">
+                <button type="button" className="delete-instance" onClick={handleDeleteInstance}>
+                  Delete
+                </button>
+                <button type="button" className="launch-button" onClick={handleLaunch} disabled={!signedIn}>
+                  Launch
+                </button>
+              </div>
             </header>
 
             <nav className="workspace-tabs">

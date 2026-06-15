@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('papyrus', {
   listVersions: () => ipcRenderer.invoke('versions:list'),
   listProfiles: () => ipcRenderer.invoke('profiles:list'),
   saveProfile: (profile: unknown) => ipcRenderer.invoke('profiles:save', profile),
+  deleteProfile: (profileId: string) => ipcRenderer.invoke('profiles:delete', profileId),
   listUserMods: () => ipcRenderer.invoke('mods:listUser'),
   openModsFolder: () => ipcRenderer.invoke('mods:openFolder'),
   removeModFromProfile: (profileId: string, filename: string) =>
@@ -39,6 +40,7 @@ declare global {
       listVersions: () => Promise<string[]>;
       listProfiles: () => Promise<Array<{ id: string; name: string; mcVersion: string; mods: string[] }>>;
       saveProfile: (profile: { id: string; name: string; mcVersion: string; mods: string[] }) => Promise<unknown>;
+      deleteProfile: (profileId: string) => Promise<{ ok: boolean }>;
       listUserMods: () => Promise<string[]>;
       openModsFolder: () => Promise<void>;
       removeModFromProfile: (profileId: string, filename: string) => Promise<string[]>;

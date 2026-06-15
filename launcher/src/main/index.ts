@@ -309,6 +309,21 @@ ipcMain.handle('profiles:save', async (_e, profile: StoredProfile) => {
   return next;
 });
 
+ipcMain.handle('profiles:delete', async (_e, profileId: string) => {
+  const profiles = await loadProfiles();
+  const profile = profiles.find((p) => p.id === profileId);
+  if (!profile) throw new Error('Instance not found');
+
+  await saveProfiles(profiles.filter((p) => p.id !== profileId));
+
+  const instanceRoot = path.join(getDataRoot(), 'instances', profileId);
+  if (existsSync(instanceRoot)) {
+    await fs.rm(instanceRoot, { recursive: true, force: true });
+  }
+
+  return { ok: true };
+});
+
 ipcMain.handle('mods:listUser', async () => {
   const dir = path.join(getDataRoot(), 'mods');
   const files = await fs.readdir(dir);
