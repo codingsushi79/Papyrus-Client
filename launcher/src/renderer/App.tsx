@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import logo from './assets/papyrus.png';
 
 type Profile = { id: string; name: string; mcVersion: string; mods: string[] };
 
@@ -71,9 +72,12 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
-        <div>
-          <p className="eyebrow">Fabric only · Papyrus</p>
-          <h1>Papyrus Client</h1>
+        <div className="brand">
+          <img src={logo} alt="" className="logo" />
+          <div>
+            <p className="eyebrow">Fabric only · Papyrus</p>
+            <h1>Papyrus Client</h1>
+          </div>
         </div>
         <div className="auth">
           {signedIn ? (

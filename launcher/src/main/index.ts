@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { existsSync, readdirSync } from 'node:fs';
@@ -9,13 +9,18 @@ import {
   install,
   installFabric,
 } from '@xmcl/installer';
-import { MicrosoftAuthenticator } from '@xmcl/user';
+import {
+  completeMicrosoftLogin,
+  exchangeMicrosoftCode,
+  getSession,
+  logout as logoutAccount,
+  microsoftOAuth,
+  restoreSession,
+} from './auth';
 
 const HIDDEN_MOD_ID = 'papyrus-shield';
 const DOCS_DOWNLOAD = 'https://docs.sushii.dev/papyrus-client/download';
 const PREFERRED_VERSIONS = ['26.1.2', '1.21.11', '1.21.10', '1.21.8', '1.21.4', '1.21.1'];
-const MS_CLIENT_ID = '00000000402b5328';
-const MS_SCOPE = 'XboxLive.signin offline_access';
 
 type StoredProfile = {
   id: string;
@@ -24,14 +29,7 @@ type StoredProfile = {
   mods: string[];
 };
 
-type Session = {
-  uuid: string;
-  name: string;
-  accessToken: string;
-};
-
 let mainWindow: BrowserWindow | null = null;
-let session: Session | null = null;
 
 function getDataRoot() {
   return path.join(app.getPath('userData'), 'papyrus-client');
@@ -86,91 +84,78 @@ async function installHiddenMod(instanceRoot: string, mcVersion: string) {
   await fs.copyFile(src, dest);
 }
 
-async function acquireMicrosoftAccessToken() {
-  const deviceRes = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ client_id: MS_CLIENT_ID, scope: MS_SCOPE }),
-  });
-  const device = (await deviceRes.json()) as {
-    user_code: string;
-    device_code: string;
-    verification_uri: string;
-    expires_in: number;
-    interval: number;
-    error?: string;
-    error_description?: string;
-  };
-  if (device.error) {
-    throw new Error(device.error_description ?? device.error);
-  }
+async function acquireMicrosoftAuthCode() {
+  return new Promise<string>((resolve, reject) => {
+    let finished = false;
 
-  await shell.openExternal(device.verification_uri);
-  const dialogOptions = {
-    type: 'info' as const,
-    title: 'Microsoft Sign In',
-    message: 'Sign in in your browser',
-    detail: `If prompted, enter this code: ${device.user_code}`,
-    buttons: ['Continue'],
-  };
-  if (mainWindow) {
-    await dialog.showMessageBox(mainWindow, dialogOptions);
-  } else {
-    await dialog.showMessageBox(dialogOptions);
-  }
-
-  const deadline = Date.now() + device.expires_in * 1000;
-  const interval = (device.interval ?? 5) * 1000;
-
-  while (Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, interval));
-    const tokenRes = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: MS_CLIENT_ID,
-        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-        device_code: device.device_code,
-      }),
-    });
-    const token = (await tokenRes.json()) as {
-      access_token?: string;
-      error?: string;
-      error_description?: string;
+    const finish = (handler: () => void) => {
+      if (finished) return;
+      finished = true;
+      handler();
     };
-    if (token.access_token) {
-      return token.access_token;
-    }
-    if (token.error && token.error !== 'authorization_pending') {
-      throw new Error(token.error_description ?? token.error);
-    }
-  }
 
-  throw new Error('Microsoft sign-in timed out');
+    const authWindow = new BrowserWindow({
+      width: 520,
+      height: 720,
+      parent: mainWindow ?? undefined,
+      modal: !!mainWindow,
+      title: 'Sign in with Microsoft',
+      icon: getAppIconPath(),
+      autoHideMenuBar: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+
+    const authUrl = new URL('https://login.live.com/oauth20_authorize.srf');
+    authUrl.searchParams.set('client_id', microsoftOAuth.clientId);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('redirect_uri', microsoftOAuth.redirectUri);
+    authUrl.searchParams.set('scope', microsoftOAuth.scope);
+    authUrl.searchParams.set('prompt', 'select_account');
+
+    const handleRedirect = (url: string) => {
+      if (!url.startsWith(microsoftOAuth.redirectUri)) return;
+
+      const parsed = new URL(url);
+      const error = parsed.searchParams.get('error');
+      if (error) {
+        finish(() => {
+          authWindow.close();
+          reject(new Error(parsed.searchParams.get('error_description') ?? error));
+        });
+        return;
+      }
+
+      const code = parsed.searchParams.get('code');
+      if (!code) return;
+
+      finish(() => {
+        authWindow.close();
+        resolve(code);
+      });
+    };
+
+    authWindow.webContents.on('will-redirect', (_event, url) => handleRedirect(url));
+    authWindow.webContents.on('will-navigate', (_event, url) => handleRedirect(url));
+    authWindow.on('closed', () => {
+      finish(() => reject(new Error('Microsoft sign-in was cancelled.')));
+    });
+
+    authWindow.loadURL(authUrl.toString()).catch((error: Error) => {
+      finish(() => {
+        authWindow.close();
+        reject(error);
+      });
+    });
+  });
 }
 
 async function loginWithMicrosoft() {
-  const msAccessToken = await acquireMicrosoftAccessToken();
-  const authenticator = new MicrosoftAuthenticator({});
-  const { minecraftXstsResponse } = await authenticator.acquireXBoxToken(msAccessToken);
-  const mcResponse = await authenticator.loginMinecraftWithXBox(
-    minecraftXstsResponse.DisplayClaims.xui[0].uhs,
-    minecraftXstsResponse.Token,
-  );
-
-  const profileRes = await fetch('https://api.minecraftservices.com/minecraft/profile', {
-    headers: { Authorization: `Bearer ${mcResponse.access_token}` },
-  });
-  if (!profileRes.ok) {
-    throw new Error('This Microsoft account does not own Minecraft Java Edition.');
-  }
-  const profile = (await profileRes.json()) as { id: string; name: string };
-
-  return {
-    uuid: profile.id,
-    name: profile.name,
-    accessToken: mcResponse.access_token,
-  };
+  const code = await acquireMicrosoftAuthCode();
+  const msTokens = await exchangeMicrosoftCode(code);
+  return completeMicrosoftLogin(getDataRoot(), msTokens);
 }
 
 async function prepareInstance(profile: StoredProfile) {
@@ -212,19 +197,35 @@ async function prepareInstance(profile: StoredProfile) {
   return { instanceRoot, versionId: fabricVersionId };
 }
 
+function getAppIconPath() {
+  const packaged = path.join(process.resourcesPath, 'icon.png');
+  if (app.isPackaged && existsSync(packaged)) {
+    return packaged;
+  }
+  return path.join(app.getAppPath(), 'build', 'icon.png');
+}
+
 function createWindow() {
+  const iconPath = getAppIconPath();
+  const icon = nativeImage.createFromPath(iconPath);
+
   mainWindow = new BrowserWindow({
     width: 1100,
     height: 720,
     minWidth: 900,
     minHeight: 600,
     title: 'Papyrus Client',
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
+
+  if (process.platform === 'darwin' && app.dock && !icon.isEmpty()) {
+    app.dock.setIcon(icon);
+  }
 
   if (process.env.VITE_DEV_SERVER) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER);
@@ -235,6 +236,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   await ensureDirs();
+  await restoreSession(getDataRoot());
   createWindow();
 });
 
@@ -242,19 +244,21 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-ipcMain.handle('auth:status', () => ({
-  signedIn: session != null,
-  name: session?.name ?? null,
-}));
+ipcMain.handle('auth:status', () => {
+  const session = getSession();
+  return {
+    signedIn: session != null,
+    name: session?.name ?? null,
+  };
+});
 
 ipcMain.handle('auth:login', async () => {
   const result = await loginWithMicrosoft();
-  session = result;
   return { name: result.name, uuid: result.uuid };
 });
 
 ipcMain.handle('auth:logout', async () => {
-  session = null;
+  await logoutAccount(getDataRoot());
   return { ok: true };
 });
 
@@ -294,6 +298,7 @@ ipcMain.handle('mods:listUser', async () => {
 });
 
 ipcMain.handle('launch:start', async (_e, profileId: string) => {
+  const session = getSession();
   if (!session) {
     throw new Error('Sign in with Microsoft before launching.');
   }

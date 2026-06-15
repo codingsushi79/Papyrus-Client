@@ -35,14 +35,20 @@
   "build": {
     "appId": "dev.sushimc.papyrus.client",
     "productName": "Papyrus Client",
+    "icon": "build/icon.png",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
       "package.json"
     ],
     "extraResources": [
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
+      },
       {
         "from": "../mod/build/libs",
         "to": "bundled-mods",
