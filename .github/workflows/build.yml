@@ -2,7 +2,6 @@ name: Build Papyrus Client
 
 on:
   push:
-    branches: [main]
     tags: ['v*']
   pull_request:
     branches: [main]
@@ -146,9 +145,23 @@ jobs:
           find artifacts -type f -name 'papyrus-shield-*-*.jar' -exec cp {} release/ \;
           find artifacts -type f -name '*.dmg' -exec cp {} release/ \;
           find artifacts -type f -name '*.exe' -exec cp {} release/ \;
+          count=$(find release -type f | wc -l)
+          echo "Prepared ${count} release files"
           ls -la release/
+          test "${count}" -ge 8
+      - name: Remove stale release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release view "$tag" --json assets -q '.assets[].id' | while read -r id; do
+              gh api -X DELETE "repos/${{ github.repository }}/releases/assets/${id}" || true
+            done
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           files: release/*
           generate_release_notes: true
-          overwrite: true
+          overwrite_files: true
+          fail_on_unmatched_files: true

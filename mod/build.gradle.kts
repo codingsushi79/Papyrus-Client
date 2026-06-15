@@ -41,8 +41,15 @@ java {
 tasks.jar {
     val baseName = project.property("archives_base_name") as String
     val mcVersion = project.property("minecraft_version") as String
-    archiveFileName.set("$baseName-$mcVersion-${project.version}.jar")
+    val releaseJarName = "$baseName-$mcVersion-${project.version}.jar"
+    archiveFileName.set(releaseJarName.replace(".jar", "-dev.jar"))
     from("LICENSE") {
         rename { "${it}_${base.archivesName.get()}" }
     }
+}
+
+tasks.remapJar {
+    val baseName = project.property("archives_base_name") as String
+    val mcVersion = project.property("minecraft_version") as String
+    archiveFileName.set("$baseName-$mcVersion-${project.version}.jar")
 }
