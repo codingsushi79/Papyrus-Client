@@ -2,6 +2,7 @@ name: Build Papyrus Client
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
   pull_request:
     branches: [main]
@@ -11,11 +12,13 @@ permissions:
 
 jobs:
   mod:
-    name: Build papyrus-shield mod
+    name: Build papyrus-shield mod (${{ matrix.mc }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 6
       matrix:
+        # Keep in sync with SUPPORTED_VERSIONS.txt
         include:
           - mc: '1.21.1'
             project: mod
@@ -94,10 +97,12 @@ jobs:
           path: ${{ matrix.project }}/build/libs/papyrus-shield-${{ matrix.mc }}-*.jar
 
   launcher:
-    name: Build launcher
+    name: Build launcher (${{ matrix.os }})
     needs: mod
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
+      max-parallel: 2
       matrix:
         os: [macos-latest, windows-latest]
     steps:
@@ -160,9 +165,10 @@ jobs:
           find artifacts -type f -name 'latest-mac.yml' -exec cp {} release/ \;
           find artifacts -type f -name '*.blockmap' -exec cp {} release/ \;
           find artifacts -type f -name '*-arm64-mac.zip' -exec cp {} release/ \;
+          EXPECTED_MODS=$(grep -v '^#' SUPPORTED_VERSIONS.txt | grep -v '^[[:space:]]*$' | wc -l | tr -d ' ')
           echo "Release files:"
           ls -la release/
-          test "$(find release -maxdepth 1 -name 'papyrus-shield-*-*.jar' | wc -l)" -eq 6
+          test "$(find release -maxdepth 1 -name 'papyrus-shield-*-*.jar' | wc -l | tr -d ' ')" -eq "$EXPECTED_MODS"
           test "$(find release -maxdepth 1 -name '*.pkg' | wc -l)" -ge 1
           test "$(find release -maxdepth 1 -name '*Setup*.exe' | wc -l)" -ge 1
           test "$(find release -maxdepth 1 -name 'latest.yml' | wc -l)" -eq 1
